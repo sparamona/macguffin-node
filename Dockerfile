@@ -1,23 +1,27 @@
 # Build stage for React frontend
 FROM node:20-alpine AS frontend-build
 
-WORKDIR /app
-COPY client/package*.json ./client/
-RUN cd client && npm ci
-COPY client/ ./client/
-COPY server/ ./server/
-RUN cd client && npm run build
+WORKDIR /build
+COPY client/package*.json ./
+RUN npm ci
+COPY client/ ./
+RUN BUILD_FOR_DOCKER=1 npm run build
+# Build outputs to /build/dist
 
 # Production stage
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy server files (includes init_db.sql and built frontend at dist/)
+# Install server dependencies
 COPY server/package*.json ./
 RUN npm ci --production
 
+# Copy server files
 COPY server/ ./
+
+# Copy built frontend from build stage
+COPY --from=frontend-build /build/dist ./dist
 
 # Create data directory
 RUN mkdir -p /data

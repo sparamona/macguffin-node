@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: '../server/dist',
+    outDir: process.env.BUILD_FOR_DOCKER ? 'dist' : '../server/dist',
     emptyOutDir: true
   },
   server: {
