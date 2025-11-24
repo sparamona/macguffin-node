@@ -280,18 +280,98 @@ docker compose logs -f
 
 Press `Ctrl+C` to exit logs.
 
-### 4.6: Test the Application
+### 4.6: Verify Database Initialization
 
+Check the logs to confirm the database was initialized and seeded:
+
+```bash
+docker compose logs app | grep -i "database\|initialized"
+```
+
+You should see:
+```
+app-1  | Database initialized
+```
+
+### 4.7: Seed Test Data (REQUIRED for Testing)
+
+The database is automatically initialized with the schema and 3 macguffins, but **no users are created**. You need to either:
+
+**Option A: Seed test data (recommended for testing)**
+
+```bash
+docker compose exec app npm run seed
+```
+
+You should see:
+```
+Seeding test data...
+
+Creating users...
+  ✓ admin@test.com (admin)
+  ✓ user@test.com (user)
+  ✓ alice@test.com (user)
+  ✓ bob@test.com (user)
+
+Creating inventory entries...
+  ✓ alice@test.com found Golden Idol
+  ✓ alice@test.com found Holy Grail
+  ✓ alice@test.com found Maltese Falcon
+  ✓ bob@test.com found Golden Idol
+  ✓ bob@test.com found Holy Grail
+  ✓ user@test.com found Golden Idol
+
+✅ Test data seeded successfully!
+
+Test accounts:
+  admin@test.com / password123 (admin)
+  user@test.com / password123
+  alice@test.com / password123
+  bob@test.com / password123
+```
+
+**Option B: Create users manually via API**
+
+If you skip seeding, you can create users via the register endpoint:
+
+```bash
+curl -X POST http://localhost:3000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"yourpassword"}'
+```
+
+**Note:** The first user you create won't be an admin. You'll need to manually update the database or use the seeded admin account.
+
+### 4.8: Test the Application
+
+**Test the frontend:**
 ```bash
 curl http://localhost:3000
 ```
 
 You should see HTML output from the React app.
 
+**Test the API:**
+```bash
+# Check leaderboard
+curl http://localhost:3000/api/leaderboard
+
+# Should show alice (3), bob (2), user (1) if you seeded data
+# Should show [] if you didn't seed data
+```
+
 **Access from your browser:**
 - Open `http://YOUR_LINODE_IP:3000`
 - You should see the Macguffin Tracker login page
+
+**If you seeded data:**
 - Login with: `admin@test.com` / `password123`
+- You should see the leaderboard with alice, bob, and user
+- As admin, you can access the Admin Panel to manage macguffins
+
+**If you didn't seed data:**
+- You'll need to register a new account first
+- The leaderboard will be empty until users add macguffins to their inventory
 
 **Note:** At this point, port 3000 is exposed to the internet. We'll secure it in Step 5 by adding nginx-proxy, or in Step 6 by configuring the firewall.
 
@@ -327,8 +407,6 @@ mkdir -p nginx-proxy
 
 # Create docker-compose.override.yml
 cat > docker-compose.override.yml << 'EOF'
-version: '3.8'
-
 services:
   nginx-proxy:
     image: nginxproxy/nginx-proxy:latest
@@ -697,12 +775,59 @@ docker compose up -d
 docker compose exec app sh
 ```
 
-### View database
+### View database contents
+
+Check what's in the database:
+
 ```bash
-# Install sqlite3 in container
-docker compose exec app sh
-apk add sqlite
-sqlite3 /data/macguffin.db
+# Access the database
+docker compose exec app sh -c "apk add sqlite && sqlite3 /data/macguffin.db"
+```
+
+Then run SQL queries:
+```sql
+-- Check tables exist
+.tables
+
+-- Check macguffins (should have 3)
+SELECT * FROM macguffins;
+
+-- Check users (empty unless you ran seed)
+SELECT email, is_admin FROM users;
+
+-- Check leaderboard
+SELECT
+  user_email,
+  COUNT(*) as macguffin_count
+FROM user_inventory
+GROUP BY user_email
+ORDER BY macguffin_count DESC;
+
+-- Exit
+.quit
+```
+
+**Expected results:**
+- **macguffins table**: 3 rows (Golden Idol, Holy Grail, Maltese Falcon)
+- **users table**: 0 rows (unless you ran `npm run seed`)
+- **user_inventory table**: 0 rows (unless you ran `npm run seed`)
+
+### Verify seeded data
+
+If you ran `npm run seed`, verify the data:
+
+```bash
+# Check leaderboard via API
+curl http://localhost:3000/api/leaderboard
+```
+
+Should return:
+```json
+[
+  {"user_email":"alice@test.com","macguffin_count":3},
+  {"user_email":"bob@test.com","macguffin_count":2},
+  {"user_email":"user@test.com","macguffin_count":1}
+]
 ```
 
 ### Check port 3000 is listening
