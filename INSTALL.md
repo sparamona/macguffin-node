@@ -10,6 +10,15 @@ This guide will walk you through deploying Macguffin Tracker on Linode using Doc
 - A domain name (optional, but recommended for SSL)
 - Your SSH public key (generate with `ssh-keygen` if you don't have one)
 
+### What You'll Create
+
+- A Linode server with Docker pre-installed
+- A non-root sudo user for secure SSH access
+- Macguffin Tracker running in Docker containers
+- Optional: Nginx reverse proxy with automatic SSL certificates
+- Firewall protection with UFW
+- Brute-force protection with fail2ban
+
 ---
 
 ## Step 1: Create a Linode with Docker
@@ -30,10 +39,69 @@ Go to [https://cloud.linode.com](https://cloud.linode.com) and log in.
 3. Click on **Docker** (official Linode Marketplace app)
 4. Click **Select**
 
-### 1.4: Configure Your Linode
+### 1.4: Configure Docker Setup Options
 
-**Image Selection:**
-- The Docker Marketplace app will automatically use Ubuntu 22.04 LTS
+The Docker Marketplace app has specific setup fields. Here's what to enter:
+
+#### Required Field:
+
+**The limited sudo user to be created for the Linode:**
+- Enter a username (lowercase, no special characters)
+- **Recommended:** `deploy`
+- This user will:
+  - Have sudo access (can run commands as root)
+  - Be used for SSH login
+  - Be more secure than using root directly
+
+#### Advanced Options (Click to Expand):
+
+**1. Disable root access over SSH?**
+- **Recommended:** Select **Yes**
+- **Why:** Prevents direct root login, forcing use of the sudo user
+- **Security benefit:** Attackers can't brute-force the root account
+- **Note:** You can still become root with `sudo -i` after logging in
+
+**2. Your Linode API token** (optional)
+- **Recommended:** Leave blank
+- **What it does:** Allows automatic DNS record creation in Linode DNS
+- **Why skip it:** We'll configure DNS manually for more control
+- **When to use:** Only if you manage DNS through Linode and want automation
+
+**3. Subdomain** (optional)
+- **Recommended:** Leave blank
+- **What it does:** Creates a subdomain DNS record (e.g., `macguffin.yourdomain.com`)
+- **Requires:** Linode API token and domain fields to be filled
+- **Why skip it:** We'll configure DNS manually in Step 2
+
+**4. Domain** (optional)
+- **Recommended:** Leave blank
+- **What it does:** Creates DNS records in Linode DNS
+- **Requires:** Linode API token
+- **Why skip it:** We'll configure DNS manually for flexibility
+
+**5. Email address for new DNS zone** (optional)
+- **Recommended:** Leave blank
+- **What it does:** Sets the SOA email for DNS zone
+- **Requires:** Domain and API token fields
+- **Why skip it:** Not needed if configuring DNS manually
+
+#### Summary of Recommended Settings:
+
+```
+✓ Limited sudo user: deploy
+✓ Disable root SSH: Yes
+✗ API token: (leave blank)
+✗ Subdomain: (leave blank)
+✗ Domain: (leave blank)
+✗ Email: (leave blank)
+```
+
+**Why these settings?**
+- Creates a secure, non-root user for SSH
+- Disables root login for better security
+- Skips automatic DNS (we'll do it manually for more control)
+
+### 1.5: Configure Linode Settings
 
 **Region:**
 - Choose a region close to your users (e.g., Newark, NJ for US East Coast)
@@ -49,7 +117,8 @@ Go to [https://cloud.linode.com](https://cloud.linode.com) and log in.
 - Add tags like `production`, `docker`, `macguffin`
 
 **Root Password:**
-- Create a strong root password (you'll rarely need this)
+- Create a strong root password
+- You'll only need this for emergency console access if root SSH is disabled
 
 **SSH Keys (HIGHLY RECOMMENDED):**
 1. Click **Add An SSH Key**
@@ -57,20 +126,18 @@ Go to [https://cloud.linode.com](https://cloud.linode.com) and log in.
 3. Give it a label like "My Laptop"
 4. Click **Add Key**
 
-**Advanced Options (optional):**
-- Leave defaults unless you have specific needs
-
-### 1.5: Create the Linode
+### 1.6: Create the Linode
 
 1. Review your selections
 2. Click **Create Linode** (bottom right)
-3. Wait 2-3 minutes for the Linode to boot
+3. Wait 2-3 minutes for the Linode to boot and Docker to install
 
-### 1.6: Note Your IP Address
+### 1.7: Note Your IP Address and Credentials
 
 Once the Linode is running:
 1. You'll see the status change to **Running** (green)
 2. Note the **IP Address** shown (e.g., `192.0.2.123`)
+3. Remember the **sudo username** you created (e.g., `deploy`)
 
 ---
 
@@ -104,18 +171,22 @@ DNS propagation usually takes 5-15 minutes.
 
 ### 3.1: Connect via SSH
 
-Open your terminal and connect:
+Open your terminal and connect using the **sudo user** you created:
 
 ```bash
-ssh root@YOUR_LINODE_IP
+ssh YOUR_SUDO_USER@YOUR_LINODE_IP
 ```
 
-Replace `YOUR_LINODE_IP` with your actual IP address.
+Replace:
+- `YOUR_SUDO_USER` with the username you created (e.g., `deploy`)
+- `YOUR_LINODE_IP` with your actual IP address
 
 **Example:**
 ```bash
-ssh root@192.0.2.123
+ssh deploy@192.0.2.123
 ```
+
+**Note:** If you disabled root SSH access (recommended), you must use the sudo user. If you need root access, use `sudo -i` after logging in.
 
 ### 3.2: Verify Docker is Installed
 
@@ -136,7 +207,16 @@ Docker Compose version v2.x.x
 
 ## Step 4: Deploy Macguffin Tracker
 
-### 4.1: Create Application Directory
+### 4.1: Switch to Root and Create Application Directory
+
+Since we need to work in `/opt`, switch to root:
+
+```bash
+sudo -i
+cd /opt
+```
+
+Create the application directory:
 
 ```bash
 mkdir -p /opt/macguffin
@@ -212,6 +292,8 @@ You should see HTML output from the React app.
 - Open `http://YOUR_LINODE_IP:3000`
 - You should see the Macguffin Tracker login page
 - Login with: `admin@test.com` / `password123`
+
+**Note:** At this point, port 3000 is exposed to the internet. We'll secure it in Step 5 by adding nginx-proxy, or in Step 6 by configuring the firewall.
 
 ---
 
@@ -472,13 +554,70 @@ fail2ban-client status
 
 ---
 
+## Step 8: Security Verification
+
+### 8.1: Verify Port 3000 is Secured
+
+From your **local machine** (not the server), test if port 3000 is accessible:
+
+```bash
+# This should FAIL (connection refused or timeout) if using nginx-proxy:
+curl http://YOUR_LINODE_IP:3000
+
+# This should SUCCEED if using nginx-proxy:
+curl https://yourdomain.com
+```
+
+**Expected results with nginx-proxy:**
+- ❌ `curl http://YOUR_LINODE_IP:3000` - **Should fail** (port not exposed)
+- ✅ `curl https://yourdomain.com` - **Should succeed** (nginx-proxy working)
+
+**If port 3000 is accessible from the internet:**
+1. Check that `docker-compose.override.yml` was created correctly
+2. Verify it contains `ports: []` under the `app` service
+3. Restart: `docker compose down && docker compose up -d`
+
+### 8.2: Verify Firewall is Active
+
+```bash
+# On the server
+ufw status verbose
+
+# Should show "Status: active"
+```
+
+### 8.3: Test SSL Certificate
+
+```bash
+# From your local machine
+curl -I https://yourdomain.com
+
+# Should show "HTTP/2 200" or "HTTP/1.1 200"
+# Should NOT show certificate errors
+```
+
+### 8.4: Security Checklist
+
+- [ ] Port 3000 is NOT accessible from the internet (if using nginx-proxy)
+- [ ] Firewall (UFW) is enabled and active
+- [ ] Only ports 22, 80, 443 are open (or 22, 3000 if not using nginx-proxy)
+- [ ] SSL certificate is valid (if using domain)
+- [ ] Fail2ban is running
+- [ ] SSH key authentication is configured
+- [ ] Default admin password has been changed
+
+---
+
 ## Updating the Application
 
 To update your application with the latest code from git:
 
 ```bash
-# SSH into your Linode
-ssh root@YOUR_LINODE_IP
+# SSH into your Linode (use your sudo user)
+ssh deploy@YOUR_LINODE_IP
+
+# Switch to root
+sudo -i
 
 # Navigate to app directory
 cd /opt/macguffin
@@ -486,11 +625,13 @@ cd /opt/macguffin
 # Pull latest changes
 git pull origin main
 
-# Rebuild and restart containers
+# Rebuild and restart containers (no cache to ensure fresh build)
 docker compose build --no-cache
+
+# Restart with new image
 docker compose up -d
 
-# Check logs
+# Check logs to verify it's working
 docker compose logs -f app
 ```
 
@@ -498,13 +639,30 @@ Press `Ctrl+C` to exit logs.
 
 **The update process:**
 1. Pulls latest code from GitHub
-2. Rebuilds the Docker image with new code
-3. Restarts the container
+2. Rebuilds the Docker image with new code (including any Dockerfile changes)
+3. Restarts the container with the new image
 4. Database persists (stored in Docker volume)
+
+**Important:** Always use `--no-cache` when rebuilding to ensure all changes are picked up, especially if the Dockerfile or dependencies changed.
 
 ---
 
 ## Troubleshooting
+
+### Error: ENOENT: no such file or directory, open 'init_db.sql'
+
+This means the Docker image was built from an older version of the code. Pull the latest changes and rebuild:
+
+```bash
+cd /opt/macguffin
+git pull origin main
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+docker compose logs -f app
+```
+
+You should see `Database initialized` in the logs.
 
 ### Check application logs
 ```bash
@@ -558,15 +716,51 @@ docker compose ps
 
 ## Security Summary
 
-What you've set up:
+### Architecture Overview
+
+**With nginx-proxy (recommended):**
+```
+Internet
+   ↓
+UFW Firewall (ports 22, 80, 443 only)
+   ↓
+Nginx Proxy (port 80/443) → SSL termination
+   ↓
+Docker Internal Network (not exposed to internet)
+   ↓
+App Container (port 3000 - internal only)
+```
+
+**Without nginx-proxy (direct access):**
+```
+Internet
+   ↓
+UFW Firewall (ports 22, 3000 only)
+   ↓
+App Container (port 3000 - exposed)
+```
+
+### What You've Set Up:
 
 ✅ **Docker Isolation** - Application runs in isolated container
 ✅ **Firewall (UFW)** - Only necessary ports open (22, 80, 443)
+✅ **Port 3000 Secured** - NOT exposed to internet when using nginx-proxy
 ✅ **Fail2ban** - Automatic IP blocking after failed SSH attempts
 ✅ **SSH Key Authentication** - If you added your SSH key during Linode creation
 ✅ **Nginx Reverse Proxy** - If domain configured, hides Node.js behind Nginx
 ✅ **SSL/TLS** - Automatic Let's Encrypt certificate with auto-renewal
 ✅ **Non-root Container** - App runs as non-root user inside container
+
+### How Port 3000 is Secured:
+
+When using nginx-proxy:
+1. The base `docker-compose.yml` exposes port 3000 for development
+2. The `docker-compose.override.yml` **removes** the port mapping with `ports: []`
+3. Docker Compose merges these files, resulting in NO external port exposure
+4. Port 3000 is only accessible within Docker's internal network
+5. Only nginx-proxy can reach the app container via the `macguffin-network` bridge
+6. The firewall blocks port 3000 from the internet
+7. Users can only access via ports 80/443 through nginx-proxy
 
 ## Security Recommendations
 

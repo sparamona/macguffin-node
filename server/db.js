@@ -42,7 +42,7 @@ const dbAll = (sql, params = []) => {
 
 // Initialize database if needed
 async function initializeDatabase() {
-  const initSQL = fs.readFileSync(path.join(__dirname, '../init_db.sql'), 'utf8');
+  const initSQL = fs.readFileSync(path.join(__dirname, 'init_db.sql'), 'utf8');
   const statements = initSQL.split(';').filter(s => s.trim());
 
   for (const statement of statements) {

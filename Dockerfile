@@ -12,12 +12,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy server files
+# Copy server files (includes init_db.sql)
 COPY server/package*.json ./
 RUN npm ci --production
 
 COPY server/ ./
-COPY init_db.sql ./
 
 # Copy built frontend from build stage
 COPY --from=frontend-build /app/client/dist ./dist
