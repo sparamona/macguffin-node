@@ -7,7 +7,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "db": "node db-client.js",
-    "seed": "node seed-data.js"
+    "seed": "node seed-data.js",
+    "manage-users": "node manage-users.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

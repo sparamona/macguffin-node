@@ -377,6 +377,115 @@ curl http://localhost:3000/api/leaderboard
 
 ---
 
+## Step 4.9: User Management
+
+### Interactive User Management Script (Recommended)
+
+The easiest way to manage users is with the interactive script:
+
+```bash
+docker compose exec app npm run manage-users
+```
+
+This will show a menu:
+
+```
+╔════════════════════════════════════════╗
+║     Macguffin User Management          ║
+╚════════════════════════════════════════╝
+
+  1. List all users
+  2. Add new user
+  3. Delete user
+  4. Change user password
+  5. Toggle admin status
+  6. Exit
+
+Select an option (1-6):
+```
+
+**Features:**
+- ✅ Add new users (with option to make them admin)
+- ✅ Delete users (with confirmation)
+- ✅ Change passwords
+- ✅ Toggle admin status
+- ✅ List all users with roles
+- ✅ Input validation
+- ✅ User-friendly interface
+
+### Creating Users (Alternative Methods)
+
+**Method 1: Via Registration API (For End Users)**
+
+Users can self-register through the web interface or API:
+
+```bash
+# Register a new user
+curl -X POST http://localhost:3000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newuser@example.com",
+    "password": "securepassword123"
+  }'
+```
+
+Response:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "uuid-here",
+    "email": "newuser@example.com",
+    "is_admin": false
+  }
+}
+```
+
+**Method 2: Via Seed Script (Testing Only)**
+
+```bash
+docker compose exec app npm run seed
+```
+
+Creates 4 test users (see Step 4.7 above).
+
+### User Management via Database (Advanced)
+
+If you prefer direct database access instead of the interactive script:
+
+```bash
+# Access the database
+docker compose exec app sh -c "apk add sqlite && sqlite3 /data/macguffin.db"
+```
+
+Common queries:
+```sql
+-- List all users
+SELECT email, is_admin, created_at FROM users;
+
+-- Make a user admin
+UPDATE users SET is_admin = 1 WHERE email = 'user@example.com';
+
+-- Delete a user
+DELETE FROM users WHERE email = 'user@example.com';
+
+-- Exit
+.quit
+```
+
+### User Management Summary
+
+| Task | Recommended Method | Alternative |
+|------|-------------------|-------------|
+| Create user | `npm run manage-users` → Option 2 | Registration API |
+| Create admin | `npm run manage-users` → Option 2 → Make admin? y | SQL: `UPDATE users SET is_admin = 1` |
+| List users | `npm run manage-users` → Option 1 | SQL: `SELECT email, is_admin FROM users` |
+| Delete user | `npm run manage-users` → Option 3 | SQL: `DELETE FROM users WHERE email = '...'` |
+| Change password | `npm run manage-users` → Option 4 | Delete and re-register |
+| Toggle admin | `npm run manage-users` → Option 5 | SQL: `UPDATE users SET is_admin = ...` |
+
+---
+
 ## Step 5: Setup Nginx Reverse Proxy with SSL (Production)
 
 **Skip this step if you don't have a domain name.** You can use the app at `http://YOUR_IP:3000`
