@@ -1,0 +1,43 @@
+.admin {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.admin h2 {
+  margin-bottom: 1rem;
+}
+
+.admin h3 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #ccc;
+}
+
+.admin-table th {
+  font-weight: bold;
+}
+
+.admin-table td input {
+  width: 100%;
+  padding: 0.25rem;
+  border: 1px solid #ccc;
+}
+
+.admin-table td button {
+  width: auto;
+  padding: 0.25rem 0.5rem;
+  margin-right: 0.5rem;
+}
+

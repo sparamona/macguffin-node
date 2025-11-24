@@ -1,0 +1,40 @@
+.leaderboard {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.leaderboard h2 {
+  margin-bottom: 1rem;
+}
+
+.empty-message {
+  text-align: center;
+  padding: 2rem;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #ccc;
+}
+
+.leaderboard-table th {
+  font-weight: bold;
+}
+
+.rank {
+  width: 50px;
+}
+
+.count {
+  text-align: right;
+  width: 100px;
+}
+

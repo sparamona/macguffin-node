@@ -1,0 +1,43 @@
+.dashboard {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.dashboard h2 {
+  margin-bottom: 1rem;
+}
+
+.dashboard h3 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.empty-message {
+  text-align: center;
+  padding: 2rem;
+}
+
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 2rem;
+}
+
+.inventory-table th,
+.inventory-table td {
+  padding: 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #ccc;
+}
+
+.inventory-table th {
+  font-weight: bold;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+}
+

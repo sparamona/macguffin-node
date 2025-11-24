@@ -1,0 +1,27 @@
+.app {
+  padding: 2rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #ccc;
+}
+
+header h1 {
+  margin: 0;
+}
+
+.user-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.user-info button {
+  width: auto;
+  padding: 0.5rem 1rem;
+}

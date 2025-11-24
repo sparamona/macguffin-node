@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/data
+    environment:
+      - NODE_ENV=production
+      - DB_PATH=/data/macguffin.db
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
+      - BELL_API_KEY=${BELL_API_KEY:-your-bell-api-key}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@test.com}
+    restart: unless-stopped
+
