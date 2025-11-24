@@ -676,6 +676,8 @@ services:
     expose:
       - "3000"
     ports: []
+    networks:
+      - macguffin-network
 
 networks:
   macguffin-network:
