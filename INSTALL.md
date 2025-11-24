@@ -4,6 +4,38 @@
 
 This guide will walk you through deploying Macguffin Tracker on Linode using Docker for maximum simplicity and security.
 
+---
+
+## 🚀 Quick Reference
+
+**After initial setup, these are the most common commands:**
+
+```bash
+# SSH into your server
+ssh deploy@YOUR_LINODE_IP
+
+# Navigate to app directory
+cd /opt/macguffin
+
+# Update and restart (after git pull)
+git pull origin main
+docker compose build
+docker compose up -d
+
+# View logs
+docker compose logs -f app
+
+# Manage users
+docker compose exec app npm run manage-users
+
+# Backup database
+cp data/macguffin.db data/macguffin.db.backup-$(date +%Y%m%d)
+```
+
+**See Step 4.10 for complete operations guide.**
+
+---
+
 ### Prerequisites
 
 - A Linode account ([sign up here](https://www.linode.com))
@@ -337,7 +369,7 @@ If you skip seeding, you can create users via the register endpoint:
 ```bash
 curl -X POST http://localhost:3000/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"yourpassword"}'
+  -d '{"email":"admin2@example.com","password":"yourpassword"}'
 ```
 
 **Note:** The first user you create won't be an admin. You'll need to manually update the database or use the seeded admin account.
@@ -486,6 +518,91 @@ DELETE FROM users WHERE email = 'user@example.com';
 
 ---
 
+## Step 4.10: Common Operations
+
+### Update and Restart (After git pull)
+
+**Quick restart (no code changes):**
+```bash
+cd /opt/macguffin
+docker compose restart
+```
+
+**After pulling code changes:**
+```bash
+cd /opt/macguffin
+git pull origin main
+docker compose build
+docker compose up -d
+```
+
+**Force rebuild (if build cache causes issues):**
+```bash
+cd /opt/macguffin
+git pull origin main
+docker compose build --no-cache
+docker compose up -d
+```
+
+### When to Use Each:
+
+| Scenario | Command |
+|----------|---------|
+| App crashed, need to restart | `docker compose restart` |
+| Pulled code changes (any .js, .jsx, .css files) | `docker compose build && docker compose up -d` |
+| Build cache issues or major changes | `docker compose build --no-cache && docker compose up -d` |
+| Changed environment variables only | Edit `.env` or `docker-compose.yml`, then `docker compose up -d` |
+
+**Note:** Since code is copied into the Docker image, any code changes require rebuilding the image. The `build` command is fast because Docker caches unchanged layers.
+
+### View Logs
+
+```bash
+# Follow logs in real-time
+docker compose logs -f app
+
+# View last 100 lines
+docker compose logs --tail=100 app
+
+# View all logs
+docker compose logs app
+```
+
+### Check Status
+
+```bash
+# Check if containers are running
+docker compose ps
+
+# Check resource usage
+docker stats
+```
+
+### Backup Database
+
+```bash
+# Create backup
+cp data/macguffin.db data/macguffin.db.backup-$(date +%Y%m%d)
+
+# Or copy to your local machine
+scp deploy@YOUR_LINODE_IP:/opt/macguffin/data/macguffin.db ./macguffin-backup.db
+```
+
+### Restore Database
+
+```bash
+# Stop the app
+docker compose down
+
+# Restore from backup
+cp data/macguffin.db.backup-20250124 data/macguffin.db
+
+# Start the app
+docker compose up -d
+```
+
+---
+
 ## Step 5: Setup Nginx Reverse Proxy with SSL (Production)
 
 **Skip this step if you don't have a domain name.** You can use the app at `http://YOUR_IP:3000`
@@ -528,6 +645,8 @@ services:
       - ./nginx-proxy/certs:/etc/nginx/certs
       - ./nginx-proxy/vhost:/etc/nginx/vhost.d
       - ./nginx-proxy/html:/usr/share/nginx/html
+    labels:
+      - "com.github.nginx-proxy.nginx"
     restart: unless-stopped
     networks:
       - macguffin-network
