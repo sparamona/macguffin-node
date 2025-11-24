@@ -649,9 +649,9 @@ Press `Ctrl+C` to exit logs.
 
 ## Troubleshooting
 
-### Error: ENOENT: no such file or directory, open 'init_db.sql'
+### Error: ENOENT: no such file or directory
 
-This means the Docker image was built from an older version of the code. Pull the latest changes and rebuild:
+If you see errors about missing files (`init_db.sql`, `dist/index.html`, etc.), the Docker image was built from an older version. Pull the latest changes and rebuild:
 
 ```bash
 cd /opt/macguffin
@@ -662,7 +662,7 @@ docker compose up -d
 docker compose logs -f app
 ```
 
-You should see `Database initialized` in the logs.
+You should see `Database initialized` and `Server running on port 3000` in the logs.
 
 ### Check application logs
 ```bash
